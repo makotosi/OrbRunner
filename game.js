@@ -35,7 +35,7 @@ const CONFIG = {
 // --- Game State ---
 const state = {
     isPlaying: false,
-    score: 0,
+    score: 0, // Now represents survival time in seconds
     frames: 0,
     width: 0,
     height: 0,
@@ -132,9 +132,9 @@ function startGame() {
     state.particles = [];
 
     // Reset Timing
-    state.startTime = Date.now();
+    state.startTime = performance.now();
     state.elapsedTime = 0;
-    state.lastSpawnTime = Date.now();
+    state.lastSpawnTime = performance.now();
 
     // Reset Difficulty
     updateDifficulty();
@@ -150,7 +150,7 @@ function startGame() {
     gameOverScreen.classList.add('hidden');
     gameOverScreen.classList.remove('active');
     hud.classList.remove('hidden');
-    scoreDisplay.textContent = '0';
+    scoreDisplay.textContent = '0.0';
 
     crazyGamesStart();
     spawnObstacle(); // Spawn first immediately
@@ -163,7 +163,7 @@ function endGame() {
     gameOverScreen.classList.remove('hidden');
     gameOverScreen.classList.add('active');
     hud.classList.add('hidden');
-    finalScoreDisplay.textContent = state.score;
+    finalScoreDisplay.textContent = state.score.toFixed(1) + ' points';
 
     crazyGamesEnd();
 }
@@ -178,22 +178,24 @@ function loop() {
 
 // --- Update Logic ---
 function updateDifficulty() {
-    const now = Date.now();
+    const now = performance.now();
     state.elapsedTime = (now - state.startTime) / 1000;
 
-    // Calculate difficulty: 1.0 to 1.5
+    // Update Score (Survival Time)
+    // Display with 1 decimal place
+    state.score = Math.floor(state.elapsedTime * 10) / 10;
+    scoreDisplay.textContent = state.score.toFixed(1);
+
+    // Calculate difficulty: 1.0 to 3.0
     // 0s -> 1.0
-    // 10s -> 1.2
-    // 25s -> 1.5 (Max)
-    state.difficulty = Math.min(1.5, 1 + state.elapsedTime * 0.02);
+    // 25s -> 1.5
+    // 100s -> 3.0 (Max)
+    state.difficulty = Math.min(3.0, 1 + state.elapsedTime * 0.02);
 
     // Apply difficulty to parameters
     state.scrollSpeed = CONFIG.baseSpeed * state.difficulty;
     state.currentGap = CONFIG.baseGap / state.difficulty;
     state.spawnInterval = CONFIG.baseSpawnInterval / state.difficulty;
-
-    // Debug Log (Optional, for verification)
-    // console.log(`Time: ${state.elapsedTime.toFixed(1)}s, Diff: ${state.difficulty.toFixed(2)}, Speed: ${state.scrollSpeed.toFixed(1)}, Gap: ${state.currentGap.toFixed(0)}`);
 }
 
 function update() {
@@ -209,11 +211,11 @@ function update() {
         return;
     }
 
-    // Update Difficulty
+    // Update Difficulty & Score
     updateDifficulty();
 
     // Obstacle Spawning (Time Based)
-    const now = Date.now();
+    const now = performance.now();
     if (now - state.lastSpawnTime >= state.spawnInterval) {
         spawnObstacle();
         state.lastSpawnTime = now;
@@ -229,11 +231,7 @@ function update() {
             return;
         }
 
-        if (!obs.passed && obs.x + CONFIG.obstacleWidth < state.player.x - state.player.radius) {
-            state.score++;
-            obs.passed = true;
-            scoreDisplay.textContent = state.score;
-        }
+        // Note: Obstacle passing logic removed as score is now time-based
 
         if (obs.x + CONFIG.obstacleWidth < 0) {
             state.obstacles.splice(i, 1);
